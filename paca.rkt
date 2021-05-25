@@ -16,11 +16,11 @@
 (define url-clock  (hash-ref paper "clock"))
 (define url-orders  (hash-ref paper "orders"))
 
-;;; Generic request
+;;; Paca Clock
 (define (paca/get url)
-  (get url
-       #:headers cred))
+  (get url #:headers cred))
 
+;;; Paca Buy 
 (define (paca/create-order
                   #:ticker tk
                   #:qty qt
@@ -34,22 +34,17 @@
          'time_in_force tif))
 
 
-(define (buy url 
-             cred
-             order)
-  (post url
+(define (paca/buy-order order)
+  (post url-orders
         #:headers cred
         #:json order))
 
+;;; Request Clock
+(response-json (get clock-url #:headers cred)
 
-;;; Paca Clock
-(define req (get post url)
+(response-json (paca/get clock-url))
 
-
-;;; test
-(response-json (get clock-url
-                    #:headers cred))
-
+;;; Request Buy Apple
 (define aapl
   (paca/create-order #:ticker "AAPL"
                      #:qty "10"
@@ -58,12 +53,5 @@
                      #:time_in_force "day"
                      ))
 
-(define order
-  '((symbol . "AAPL")
-    (qty . "10")
-    (side . "buy")
-    (type . "market")
-    (time_in_force . "day")))
-
-(response-json (buy url-orders cred aapl))
+(response-json (paca/buy-order aapl))
 
