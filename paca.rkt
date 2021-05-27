@@ -1,9 +1,9 @@
-#lang rack
+#lang racket
 
 ;;; import dependencies
 (require yaml
          net/http-easy)
-;;; yaml		
+;;; yaml
 (define paper (file->yaml "/home/emacs/rkt/paper.yml"))
 
 ;;; credential
@@ -17,10 +17,14 @@
 (define url-orders  (hash-ref paper "orders"))
 
 ;;; Paca Clock
-(define (paca/get url)
-  (get url #:headers cred))
 
-;;; Paca Buy 
+(define make-clock
+  (lambda (auth url)
+    (get url #:headers auth)))
+
+(define paca/get-clock (make-clock cred url-clock))
+
+;;; Paca Buy
 (define (paca/create-order
                   #:ticker tk
                   #:qty qt
@@ -41,8 +45,7 @@
 
 ;;; Request Clock
 (response-json (get clock-url #:headers cred)
-
-(response-json (paca/get clock-url))
+(response-json paca/get-clock)
 
 ;;; Request Buy Apple
 (define aapl
