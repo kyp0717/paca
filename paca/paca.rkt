@@ -24,6 +24,10 @@
 
 (define paca/get-clock (make-clock cred url-clock))
 
+;;; Request Clock
+(response-json (get clock-url #:headers cred))
+(response-json paca/get-clock)
+
 ;;; Paca Buy
 (define (paca/create-order-req-body
                   #:ticker tk
@@ -45,10 +49,6 @@
 
 (define paca/order (paca/make-order cred url-orders))
 
-;;; Request Clock
-(response-json (get clock-url #:headers cred))
-(response-json paca/get-clock)
-
 ;;; Request Buy Apple
 (define aapl
   (paca/create-order-req-body
@@ -61,3 +61,5 @@
 
 (define buy/apple (paca/order aapl))
 (response-json buy/apple)
+
+
