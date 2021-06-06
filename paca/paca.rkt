@@ -1,20 +1,8 @@
-#lang racket
+#lang racket/base
 
 ;;; import dependencies
-(require yaml
+(require "cred.rkt"
          net/http-easy)
-;;; yaml
-(define paper (file->yaml "/home/emacs/rkt/paper.yml"))
-
-;;; credential
-(define key (hash-ref paper "key"))
-(define secret (hash-ref paper "secret"))
-(define cred (hasheq 'APCA-API-KEY-ID key
-                     'APCA-API-SECRET-KEY secret))
-
-;;; url
-(define url-clock  (hash-ref paper "clock"))
-(define url-orders  (hash-ref paper "orders"))
 
 ;;; Paca Clock
 
@@ -24,8 +12,7 @@
 
 (define paca/get-clock (make-clock cred url-clock))
 
-;;; Request Clock
-(response-json (get clock-url #:headers cred))
+;;; Request Clock	
 (response-json paca/get-clock)
 
 ;;; Paca Buy

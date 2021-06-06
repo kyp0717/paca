@@ -4,5 +4,6 @@ account: https://paper-api.alpaca.markets/v2/accout
 orders: https://paper-api.alpaca.markets/v2/orders
 urldata: https://data.alpaca.markets
 urlsocket: wss://data.alpaca.markets/stream
+urliex: wss://stream.data.alpaca.markets/v2/iex
 key: PKLDSENB0U8ST5KZI612
 secret: qEmsGIbj8WSBK3DLVDlwcB6KJ3JsLcndnuCHdLIu
