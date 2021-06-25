@@ -4,7 +4,7 @@
 (require yaml)
 
 ;;; yaml
-(define paper (file->yaml "/home/emacs/rack/paca/paper.yml"))
+(define paper (file->yaml "/home/phage/tmp/rkt-paca/paca/paper.yml"))
 
 ;;; credential
 (define key (hash-ref paper "key"))
