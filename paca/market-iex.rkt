@@ -3,42 +3,81 @@
 
 ;;; import dependencies
 (require "credentials.rkt"
+         racket/match
          net/http-easy
          net/url
          json
          net/rfc6455)
 
-(define (recv/print c)
-  (printf "Got message: ~a\n" (ws-recv c)))
-
-(define (iex/send conn req)
-  (ws-send! conn req #:flush? #t)
-  (recv/print conn))
-
-;;; connect to iex
-(define protocol 'rfc6455)
-(define iex/conn (ws-connect (string->url urliex) #:protocol protocol))
-(recv/print iex/conn)
-;;; authenticate
-;; {"action": "auth", "key": "{APCA-API-KEY-ID}", "secret": "{APCA-API-SECRET-KEY}"}
-(define iex-req/secret
+;;; parameters for authenticate
+(define auth
   (jsexpr->string  (hasheq 'action "auth" 'key key 'secret secret)))
 
+(ws-conn-closed? iex)
+(ws-close! iex)
 
-(define iex-resp/auth (string->jsexpr (iex/send iex/conn iex-req/secret)))
 
-;;; get quotes
+;;; connect and authenticate
+;; the connection "iex" will be come live after authenticate
+(define protocol 'rfc6455)
+;; connect
+(define iex (ws-connect (string->url urliex) #:protocol protocol))
+(ws-recv iex)
+
+;; authenticate
+(ws-send! iex auth)
+(ws-recv iex)
+
+;;; build request list of tickers
 (define tickers '("AMD" "MSFT"))
-
-(define iex-req/quotes 
+(define quotes 
   (jsexpr->string (hasheq 'action "subscribe" 'quotes tickers)))
 
+;;; subscribe market data stream for quotes
+(ws-send! iex quotes)
+(ws-recv iex)
 
-(define iex-resp/quotes (iex/send iex/conn iex-req/quotes))
+;;; build table from stream
+(define stocktable (make-hasheq))
 
-;;; manage and close connection
-(ws-conn-closed? iex/conn)
-(ws-conn-closed? iex/conn)
-(ws-close! iex/conn)
+(define (extract conn)
+  (let* ([q (ws-recv conn )] ;; a string is returned
+         [q/heq (car (string->jsexpr q))]
+         [heq (make-hasheq)]
+         [ticker (string->symbol (hash-ref q/heq 'S))] 
+         [price (hash-ref q/heq 'ap)]
+         [timestamp (hash-ref q/heq 't)])
+    (hash-set! heq ticker (list timestamp price))
+    heq))
+  
+(extract iex)
 
+(define (get-stock conn s)
+  (let* ([q (extract conn)]
+         [k (car (hash-keys q))]
+         [ticker (string->symbol s)])
+         (cond
+           [(eq? ticker k) q]
+           [else (get-stock conn s)])))
+
+(get-stock iex "MSFT")
+
+                           
+(define (make-stk-tbl conn stk-list)
+  (define heq (make-hasheq))
+  (for/list ([s stk-list])
+    (define stk (get-stock conn s))
+    (hash-set! heq
+                  (car (hash-keys stk))
+                  (car (hash-values stk))))
+  heq)
+
+(make-stk-tbl iex tickers)
+
+    
+     
+
+     
+    
+  
 
