@@ -1,8 +1,10 @@
-
 #lang racket/base
 
 ;;; import dependencies
 (require "credentials.rkt"
+         racket/hash
+         racket/set
+         racket/pretty
          racket/match
          net/http-easy
          net/url
@@ -22,6 +24,7 @@
 (define protocol 'rfc6455)
 ;; connect
 (define iex (ws-connect (string->url urliex) #:protocol protocol))
+(define current-conn (make-parameter iex))
 (ws-recv iex)
 
 ;; authenticate
@@ -38,10 +41,9 @@
 (ws-recv iex)
 
 ;;; build table from stream
-(define stocktable (make-hasheq))
 
-(define (extract conn)
-  (let* ([q (ws-recv conn )] ;; a string is returned
+(define (extract-quote)
+  (let* ([q (ws-recv (current-conn) )] ;; a string is returned
          [q/heq (car (string->jsexpr q))]
          [heq (make-hasheq)]
          [ticker (string->symbol (hash-ref q/heq 'S))] 
@@ -50,34 +52,72 @@
     (hash-set! heq ticker (list timestamp price))
     heq))
   
-(extract iex)
+(extract-quote)
 
-(define (get-stock conn s)
-  (let* ([q (extract conn)]
+
+(define (get-stock s)
+  (let* ([q (extract-quote)]
          [k (car (hash-keys q))]
          [ticker (string->symbol s)])
          (cond
            [(eq? ticker k) q]
-           [else (get-stock conn s)])))
+           [else (get-stock s)])))
 
-(get-stock iex "MSFT")
+(get-stock "MSFT")
 
                            
-(define (make-stk-tbl conn stk-list)
+
+(define (make-stk-tbl stk-list)
   (define heq (make-hasheq))
   (for/list ([s stk-list])
-    (define stk (get-stock conn s))
+    (define stk (get-stock s))
     (hash-set! heq
                   (car (hash-keys stk))
                   (car (hash-values stk))))
   heq)
 
-(make-stk-tbl iex tickers)
 
-    
-     
 
-     
-    
-  
+;;; test hash union
+(define main-table (make-stk-tbl tickers))
+(define child-table (make-stk-tbl tickers))
 
+
+(hash-intersect main-table
+                child-table
+                #:combine/key
+                (λ (k v1 v2) (list v1 v2)))
+
+
+(define (update-tbl maintbl childtbl)
+  (define heq (make-hasheq))
+  (define ks (hash-keys maintbl))
+  (for/list ([k ks])
+    (define v1 (hash-ref maintbl k))
+    (define v2 (hash-ref childtbl k))
+    (hash-update! maintbl k
+                  (set-add! (list v1 v2)))
+  heq))
+
+(define (update-tbl2 maintbl childtbl)
+  (define ks (hash-keys maintbl))
+  (for/list ([k ks])
+    (define v1 (hash-ref maintbl k))
+    (define v2 (hash-ref childtbl k))
+    (cond
+      [(= (length v1) 0) 
+       (hash-set! maintbl k (list v2))]
+      [(= (length v1) 1) 
+       (hash-set! maintbl k (list v1 v2))]
+      [(> (length v1) 5)
+       (hash-set! maintbl k (cons (cdr v1) v2))]
+      [(> (length v1) 1)
+       (hash-set! maintbl k (cons v1 v2))]))
+   maintbl)
+(define m1 child-table)
+(update-tbl2 m1 child-table)
+
+
+(define hash1 #('A 1))(define m1 (make-hasheq))
+
+(pretty-print main-table)
