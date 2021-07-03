@@ -144,10 +144,14 @@
 (pretty-print main-table)
 
 ;;; example
-(define h1 (hasheq 'a  '("aa" 11)
+(define mt '())
+(define h1 (list 'a 111 222))
+(define h2 (list 'b 444 333))
+
+(define h1 (hash 'a  '("aa" 11)
                    'b  '("bb" 22)))
 
-(define h2 (hasheq 'a  '("aa1" 11.11)
+(define h2 (hash 'a  '("aa1" 11.11)
                    'b  '("bb1" 22.11)))
 
 
@@ -168,3 +172,12 @@
 
 (update-tbl2 h1 h2)
 
+
+
+;; use flatten function
+(define (append-quote nlst qt)
+  (cond
+    [(= (length nlst) 0) qt]
+    [(<= (length nlst) 5) (cons nlst (list qt))]
+    [(> (length nlst) 5) (cons (cdr nlst) qt)])))
+    
