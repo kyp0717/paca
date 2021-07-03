@@ -113,7 +113,28 @@
        (hash-set! maintbl k (cons (cdr v1) v2))]
       [(> (length v1) 1)
        (hash-set! maintbl k (cons v1 v2))]))
+  maintbl)
+
+
+(define (update-tbl2 maintbl childtbl)
+  (define ks (hash-keys maintbl))
+  (for/list ([k ks])
+    (define v1 (hash-ref maintbl k))
+    (define v2 (hash-ref childtbl k))
+    (cond  
+      [(= (length v1) 0) 
+       (hash-set! maintbl k (list v2))]
+      [(= (length v1) 1) 
+       (hash-set! maintbl k (cons v1 v2))] ))
    maintbl)
+
+
+(define m1 child-table)
+(update-tbl2 m1 child-table)
+
+
+
+
 (define m1 child-table)
 (update-tbl2 m1 child-table)
 
@@ -121,3 +142,29 @@
 (define hash1 #('A 1))(define m1 (make-hasheq))
 
 (pretty-print main-table)
+
+;;; example
+(define h1 (hasheq 'a  '("aa" 11)
+                   'b  '("bb" 22)))
+
+(define h2 (hasheq 'a  '("aa1" 11.11)
+                   'b  '("bb1" 22.11)))
+
+
+
+
+
+(define (update-tbl2 maintbl childtbl)
+  (define ks (hash-keys maintbl))
+  (for/list ([k ks])
+    (define v1 (hash-ref maintbl k))
+    (define v2 (hash-ref childtbl k))
+    (cond  
+      [(= (length v1) 0) 
+       (hash-set! maintbl k (list v2))]
+      [(= (length v1) 2) 
+       (hash-set! maintbl k (cons v1 v2))] ))
+  maintbl)
+
+(update-tbl2 h1 h2)
+
