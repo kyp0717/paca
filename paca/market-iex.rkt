@@ -175,9 +175,28 @@
 
 
 ;; use flatten function
-(define (append-quote nlst qt)
+(define (add-quote nlst qt)
   (cond
-    [(= (length nlst) 0) qt]
+    [(= (length nlst) 0) (cons qt '())]
     [(<= (length nlst) 5) (cons nlst (list qt))]
     [(> (length nlst) 5) (cons (cdr nlst) qt)])))
     
+
+(define (add-quote nlst qt)
+  (cond
+    [(= (length nlst) 0) (cons qt '())]
+    [(= (length nlst) 1) (cons qt nslt)]
+    [(<= (length nlst) 5) (cons nlst (cons  qt '()))]
+    [(> (length nlst) 5) (cons (cdr nlst) (cons (qt) '()))])) 
+
+
+(define (add-quote nlst qt)
+  (cond
+    [(= (length nlst) 0) (cons qt '())]
+    [(and (> (length nlst) 0)
+          (<= (length nlst) 5)) (cons qt nlst)]
+    [(> (length nlst) 5) (cons qt (cdr nlst))])) 
+
+
+(define (flatten-once lst)
+  (apply append lst))
