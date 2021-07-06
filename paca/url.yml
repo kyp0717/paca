@@ -1,0 +1,10 @@
+domain: https://paper-api.alpaca.markets
+clock: https://paper-api.alpaca.markets/v2/clock
+account: https://paper-api.alpaca.markets/v2/accout
+orders: https://paper-api.alpaca.markets/v2/orders
+positions: https://paper-api.alpaca.markets/v2/positions
+market-data: https://data.alpaca.markets
+stream: wss://data.alpaca.markets/stream
+iex-stream: wss://stream.data.alpaca.markets/v2/iex
+assets: https://alpaca.markets/docs/api-documentation/api-v2/assets/  
+nasdaqlist: https://www.nasdaq.com/market-activity/stocks/screener

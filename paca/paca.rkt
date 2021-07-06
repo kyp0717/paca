@@ -1,21 +1,52 @@
 #lang racket/base
 
 ;;; import dependencies
-(require "cred.rkt"
-         net/http-easy)
+(require (prefix-in cr: (submod "credentials.rkt" cred))
+         (prefix-in u: (submod "credentials.rkt" urls))
+         (prefix-in net: net/http-easy ))
 
+(define ky:get
+  (net:get (curr-clock) #:headers (auth:api))
+
+;;; import dependencies
+(require (submod "credentials.rkt" urls))
+
+(u:curr-clock)
 ;;; Paca Clock
 
 (define make-clock
   (lambda (auth url)
-    (get url #:headers auth)))
+    (net:get url #:headers auth)))
 
-(define paca/get-clock (make-clock cred url-clock))
+(define ky:get
+  (net:get (curr-clock) #:headers (curr-auth:api))p
 
-;;; Request Clock	
-(response-json paca/get-clock)
+(define get-clock (make-clock cr:auth:api urls:url-clock))
+(define get-clock (make-clock cred:auth:api cred:url-clock))
 
-;;; Paca Buy
+(get-clock)
+;;; Order
+(define (order-req
+                  #:ticker tk
+                  #:qty qt
+                  #:side sd
+                  #:type tp
+                  #:time_in_force tif)
+ (hasheq 'symbol tk
+         'qty qt
+         'side sd
+         'type tp
+         'time_in_force tif))
+
+(define (order auth url)
+ (lambda (ord)
+    (post url
+          #:headers auth
+          #:json ord)))
+
+(define paca/order (paca/make-order cred url-orders))
+
+;;; Position 
 (define (paca/create-order-req-body
                   #:ticker tk
                   #:qty qt
@@ -36,17 +67,8 @@
 
 (define paca/order (paca/make-order cred url-orders))
 
-;;; Request Buy Apple
-(define aapl
-  (paca/create-order-req-body
-                     #:ticker "AAPL"
-                     #:qty "10"
-                     #:side "buy"
-                     #:type "market"
-                     #:time_in_force "day"
-                     ))
 
-(define buy/apple (paca/order aapl))
-(response-json buy/apple)
+
+
 
 

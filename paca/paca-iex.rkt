@@ -29,8 +29,10 @@ urliex
 
 
 (define c (ws-connect (string->url urliex) #:protocol protocol))
+
 (handle-evt c
    (lambda (m)
       (printf "Got message: ~a\n" m)))
+
 (ws-conn-closed? c)
 (ws-close! c)

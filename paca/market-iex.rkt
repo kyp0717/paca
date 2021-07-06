@@ -2,6 +2,7 @@
 
 ;;; import dependencies
 (require "credentials.rkt"
+         relation/function
          racket/hash
          racket/set
          racket/pretty
@@ -10,10 +11,6 @@
          net/url
          json
          net/rfc6455)
-
-;;; parameters for authenticate
-(define auth
-  (jsexpr->string  (hasheq 'action "auth" 'key key 'secret secret)))
 
 (ws-conn-closed? iex)
 (ws-close! iex)
@@ -24,7 +21,7 @@
 (define protocol 'rfc6455)
 ;; connect
 (define iex (ws-connect (string->url urliex) #:protocol protocol))
-(define current-conn (make-parameter iex))
+(define curr:conn (make-parameter iex))
 (ws-recv iex)
 
 ;; authenticate
@@ -32,18 +29,18 @@
 (ws-recv iex)
 
 ;;; build request list of tickers
-(define tickers '("AMD" "MSFT"))
-(define quotes 
-  (jsexpr->string (hasheq 'action "subscribe" 'quotes tickers)))
+(define stocklist '("AMD" "MSFT"))
+(define current-stocklist (make-parameter (map string->symbol stocklist)))
+(define subscribe/quotes 
+  (jsexpr->string (hasheq 'action "subscribe" 'quotes stocklist)))
 
 ;;; subscribe market data stream for quotes
-(ws-send! iex quotes)
+(ws-send! iex subscribe/quotes)
 (ws-recv iex)
 
-;;; build table from stream
-
+;;; helper functions: extract quotes from stream
 (define (extract-quote)
-  (let* ([q (ws-recv (current-conn) )] ;; a string is returned
+  (let* ([q (ws-recv (curr:conn) )] ;; a string is returned
          [q/heq (car (string->jsexpr q))]
          [heq (make-hasheq)]
          [ticker (string->symbol (hash-ref q/heq 'S))] 
@@ -52,151 +49,40 @@
     (hash-set! heq ticker (list timestamp price))
     heq))
   
-(extract-quote)
+;;(extract-quote)
 
-
-(define (get-stock s)
-  (let* ([q (extract-quote)]
-         [k (car (hash-keys q))]
-         [ticker (string->symbol s)])
+;; this is a recursive fn because we need to make frequent request
+;; to the stream until the ticker of interest is provided
+(define (get-stock-price ticker)
+  (let* ([stock-quote (extract-quote)]
+         [key (car (hash-keys stock-quote))] )
          (cond
-           [(eq? ticker k) q]
-           [else (get-stock s)])))
-
-(get-stock "MSFT")
+           [(eq? sym key) stock-quote]
+           [else (get-stock sym)])))
+;;(get-stock "MSFT")
 
                            
+;;; helper fn: build stock table
+;;;; extract and dump quotes to table
+(define curr:stocktable (make-parameter (make-hasheq)))
+;; initialize stocktable
+;; todo: initialize date/time and price to yesterday close
+(for/list (key (curr:stocklist))
+  (hash-set! curr:stocklist key (list (list ("000" 111 )))))
 
-(define (make-stk-tbl stk-list)
-  (define heq (make-hasheq))
-  (for/list ([s stk-list])
-    (define stk (get-stock s))
-    (hash-set! heq
-                  (car (hash-keys stk))
-                  (car (hash-values stk))))
-  heq)
+(define (add-price hash key item)
+  (hash-update hash key (curry cons item) '()))
 
+;;;; append to table
+(define (add-pricelist)   
+  (for/list (ticker (curr:stocklist))
+    (let [price (get-stock-price ticker)]
+      (add-price (curr:stocktable) key price))))
 
+;;; help fn: get pnl
 
-;;; test hash union
-(define main-table (make-stk-tbl tickers))
-(define child-table (make-stk-tbl tickers))
-
-
-(hash-intersect main-table
-                child-table
-                #:combine/key
-                (λ (k v1 v2) (list v1 v2)))
-
-
-(define (update-tbl maintbl childtbl)
-  (define heq (make-hasheq))
-  (define ks (hash-keys maintbl))
-  (for/list ([k ks])
-    (define v1 (hash-ref maintbl k))
-    (define v2 (hash-ref childtbl k))
-    (hash-update! maintbl k
-                  (set-add! (list v1 v2)))
-  heq))
-
-(define (update-tbl2 maintbl childtbl)
-  (define ks (hash-keys maintbl))
-  (for/list ([k ks])
-    (define v1 (hash-ref maintbl k))
-    (define v2 (hash-ref childtbl k))
-    (cond
-      [(= (length v1) 0) 
-       (hash-set! maintbl k (list v2))]
-      [(= (length v1) 1) 
-       (hash-set! maintbl k (list v1 v2))]
-      [(> (length v1) 5)
-       (hash-set! maintbl k (cons (cdr v1) v2))]
-      [(> (length v1) 1)
-       (hash-set! maintbl k (cons v1 v2))]))
-  maintbl)
-
-
-(define (update-tbl2 maintbl childtbl)
-  (define ks (hash-keys maintbl))
-  (for/list ([k ks])
-    (define v1 (hash-ref maintbl k))
-    (define v2 (hash-ref childtbl k))
-    (cond  
-      [(= (length v1) 0) 
-       (hash-set! maintbl k (list v2))]
-      [(= (length v1) 1) 
-       (hash-set! maintbl k (cons v1 v2))] ))
-   maintbl)
-
-
-(define m1 child-table)
-(update-tbl2 m1 child-table)
+;;; mainloop -- algo begin
 
 
 
 
-(define m1 child-table)
-(update-tbl2 m1 child-table)
-
-
-(define hash1 #('A 1))(define m1 (make-hasheq))
-
-(pretty-print main-table)
-
-;;; example
-(define mt '())
-(define h1 (list 'a 111 222))
-(define h2 (list 'b 444 333))
-
-(define h1 (hash 'a  '("aa" 11)
-                   'b  '("bb" 22)))
-
-(define h2 (hash 'a  '("aa1" 11.11)
-                   'b  '("bb1" 22.11)))
-
-
-
-
-
-(define (update-tbl2 maintbl childtbl)
-  (define ks (hash-keys maintbl))
-  (for/list ([k ks])
-    (define v1 (hash-ref maintbl k))
-    (define v2 (hash-ref childtbl k))
-    (cond  
-      [(= (length v1) 0) 
-       (hash-set! maintbl k (list v2))]
-      [(= (length v1) 2) 
-       (hash-set! maintbl k (cons v1 v2))] ))
-  maintbl)
-
-(update-tbl2 h1 h2)
-
-
-
-;; use flatten function
-(define (add-quote nlst qt)
-  (cond
-    [(= (length nlst) 0) (cons qt '())]
-    [(<= (length nlst) 5) (cons nlst (list qt))]
-    [(> (length nlst) 5) (cons (cdr nlst) qt)])))
-    
-
-(define (add-quote nlst qt)
-  (cond
-    [(= (length nlst) 0) (cons qt '())]
-    [(= (length nlst) 1) (cons qt nslt)]
-    [(<= (length nlst) 5) (cons nlst (cons  qt '()))]
-    [(> (length nlst) 5) (cons (cdr nlst) (cons (qt) '()))])) 
-
-
-(define (add-quote nlst qt)
-  (cond
-    [(= (length nlst) 0) (cons qt '())]
-    [(and (> (length nlst) 0)
-          (<= (length nlst) 5)) (cons qt nlst)]
-    [(> (length nlst) 5) (cons qt (cdr nlst))])) 
-
-
-(define (flatten-once lst)
-  (apply append lst))

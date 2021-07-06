@@ -1,11 +1,2 @@
-domain: https://paper-api.alpaca.markets
-clock: https://paper-api.alpaca.markets/v2/clock
-account: https://paper-api.alpaca.markets/v2/accout
-orders: https://paper-api.alpaca.markets/v2/orders
-urldata: https://data.alpaca.markets
-urlsocket: wss://data.alpaca.markets/stream
-urliex: wss://stream.data.alpaca.markets/v2/iex
-urlassetslist: https://alpaca.markets/docs/api-documentation/api-v2/assets/  
-urlnasdaqlist: https://www.nasdaq.com/market-activity/stocks/screener
-key: PKLDSENB0U8ST5KZI612
+ey: PKLDSENB0U8ST5KZI612
 secret: qEmsGIbj8WSBK3DLVDlwcB6KJ3JsLcndnuCHdLIu
