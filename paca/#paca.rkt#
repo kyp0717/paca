@@ -8,10 +8,11 @@
 ;;; Paca Clock
 (define (get-clock)
   (net:get (u:curr-clock) #:headers (auth:api)))
+
 (get-clock)
 
 ;;; Order
-(define (order-req
+(define (make-order-req
                   #:ticker tk
                   #:qty qt
                   #:side sd
@@ -23,13 +24,12 @@
          'type tp
          'time_in_force tif))
 
-(define (order auth url)
+(define order
  (lambda (ord)
     (post url
           #:headers auth
           #:json ord)))
 
-(define paca/order (paca/make-order cred url-orders))
 
 ;;; Position 
 (define (paca/create-order-req-body
