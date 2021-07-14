@@ -1,7 +1,8 @@
 #lang racket/base
 
 ;;; import dependencies
-(require "credentials.rkt"
+(require (prefix-in c: (submod "./credentials.rkt" cred))
+         (prefix-in u: (submod "./credentials.rkt"  urls))
          relation/function
          racket/hash
          racket/set
@@ -12,35 +13,30 @@
          json
          net/rfc6455)
 
-(ws-conn-closed? iex)
-(ws-close! iex)
-
-
 ;;; connect and authenticate
 ;; the connection "iex" will be come live after authenticate
 (define protocol 'rfc6455)
-;; connect
-(define iex (ws-connect (string->url urliex) #:protocol protocol))
-(define curr:conn (make-parameter iex))
-(ws-recv iex)
+(define iex:con (ws-connect (string->url (u:iex)) #:protocol protocol))
+(define curr:con (make-parameter iex:con))
+(ws-recv iex:con)
 
-;; authenticate
-(ws-send! iex auth)
-(ws-recv iex)
+;; authenticate to stream (NOT the API)
+(ws-send! iex:con (c:auth-stream))
+(ws-recv iex:con)
 
 ;;; build request list of tickers
 (define stocklist '("AMD" "MSFT"))
-(define current-stocklist (make-parameter (map string->symbol stocklist)))
+(define curr:stocklist (make-parameter (map string->symbol stocklist)))
 (define subscribe/quotes 
   (jsexpr->string (hasheq 'action "subscribe" 'quotes stocklist)))
 
 ;;; subscribe market data stream for quotes
-(ws-send! iex subscribe/quotes)
-(ws-recv iex)
+(ws-send! iex:con subscribe/quotes)
+(ws-recv iex:con)
 
 ;;; helper functions: extract quotes from stream
 (define (extract-quote)
-  (let* ([q (ws-recv (curr:conn) )] ;; a string is returned
+  (let* ([q (ws-recv (curr:con) )] ;; a string is returned
          [q/heq (car (string->jsexpr q))]
          [heq (make-hasheq)]
          [ticker (string->symbol (hash-ref q/heq 'S))] 
@@ -49,7 +45,7 @@
     (hash-set! heq ticker (list timestamp price))
     heq))
   
-;;(extract-quote)
+(extract-quote)
 
 ;; this is a recursive fn because we need to make frequent request
 ;; to the stream until the ticker of interest is provided
@@ -57,32 +53,36 @@
   (let* ([stock-quote (extract-quote)]
          [key (car (hash-keys stock-quote))] )
          (cond
-           [(eq? sym key) stock-quote]
-           [else (get-stock sym)])))
-;;(get-stock "MSFT")
+           [(eq? ticker key) stock-quote]
+           [else (get-stock-price ticker)])))
+
+(get-stock-price 'MSFT)
+(get-stock-price 'AMD)
 
                            
+
 ;;; helper fn: build stock table
 ;;;; extract and dump quotes to table
 (define curr:stocktable (make-parameter (make-hasheq)))
 ;; initialize stocktable
 ;; todo: initialize date/time and price to yesterday close
-(for/list (key (curr:stocklist))
-  (hash-set! curr:stocklist key (list (list ("000" 111 )))))
+(for ([k1 stocklist])
+  (let ([k (string->symbol k1)])
+    (hash-set! (curr:stocktable) k (list '("000" 111 )))))
 
 (define (add-price hash key item)
   (hash-update hash key (curry cons item) '()))
 
 ;;;; append to table
-(define (add-pricelist)   
-  (for/list (ticker (curr:stocklist))
-    (let [price (get-stock-price ticker)]
+(define (add-stock)   
+  (for ([ticker (curr:stocklist)])
+    (let ([price (get-stock-price ticker)])
       (add-price (curr:stocktable) key price))))
 
 ;;; help fn: get pnl
 
 ;;; mainloop -- algo begin
-
-
-
+;;; close conn
+(ws-conn-closed? iex:con)
+(ws-close! iex:con)
 
