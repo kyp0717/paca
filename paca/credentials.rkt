@@ -3,14 +3,15 @@
 ;;; credential
 (module cred racket 
   (require yaml json)
-  (provide key secret auth-api auth-stream)
+  (provide key secret auth-api auth-stream )
   (define paper (file->yaml "/home/phage/projects/rkt-paca/paca/paper.yml"))
   (define key (hash-ref paper "key"))
   (define secret (hash-ref paper "secret"))
   (define auth-stream
     (make-parameter (jsexpr->string  (hasheq 'action "auth" 'key key 'secret secret))))
-  (define auth-api (make-parameter (jsexpr->string (hasheq 'APCA-API-KEY-ID key
-                                                           'APCA-API-SECRET-KEY secret))))
+  (define auth-api (make-parameter (hasheq 'APCA-API-KEY-ID key
+                                           'APCA-API-SECRET-KEY secret)))
+  
  )
 
 ;;; url

@@ -1,17 +1,17 @@
 #lang racket/base
 
 ;;; import dependencies
-(require (prefix-in c: (submod "credentials.rkt" cred))
+(require (prefix-in cred: (submod "credentials.rkt" cred))
          (prefix-in u: (submod "credentials.rkt" urls))
          (prefix-in net: net/http-easy ))
 
 ;;; Paca Clock
 (define (get-clock)
-  (net:get (u:curr-clock) #:headers (auth:api)))
+  (net:get (u:curr-clock) #:headers (cred:auth-api)))
 (get-clock)
 
 ;;; Order
-(define (order-req
+(define (order:make
                   #:ticker tk
                   #:qty qt
                   #:side sd
@@ -23,37 +23,25 @@
          'type tp
          'time_in_force tif))
 
-(define (order auth url)
- (lambda (ord)
-    (post url
-          #:headers auth
-          #:json ord)))
-
-(define paca/order (paca/make-order cred url-orders))
+(define (order:send order)
+  (post (u:orders)
+          #:headers (cred:auth-api)
+          #:json order)))
 
 ;;; Position 
-(define (paca/create-order-req-body
-                  #:ticker tk
-                  #:qty qt
-                  #:side sd
-                  #:type tp
-                  #:time_in_force tif)
- (hasheq 'symbol tk
-         'qty qt
-         'side sd
-         'type tp
-         'time_in_force tif))
+(define (pos:get ticker)
+  (define u (string->append u:position ticker))
+  (net:get u #:headers  (cred:auth-api)))
 
-(define (paca/make-order auth url)
- (lambda (ord)
-    (post url
-          #:headers auth
-          #:json ord)))
+;; close a position (liquidate)
+(define (pos:delete ticker)
+  (define u (string->append u:position ticker))
+  (net:delete u #:headers  (cred:auth-api)))
 
-(define paca/order (paca/make-order cred url-orders))
+;;; Account
+;;
 
 
 
 
-
-
+;;; Assets
