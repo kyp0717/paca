@@ -5,10 +5,10 @@
          (prefix-in u: (submod "credentials.rkt" urls))
          (prefix-in net: net/http-easy ))
 
+(provide get-clock)
 ;;; Paca Clock
 (define (get-clock)
-  (net:get (u:curr-clock) #:headers (cred:auth-api)))
-(get-clock)
+  (net:get (u:clock) #:headers (cred:auth-api)))
 
 ;;; Order
 (define (order:make
@@ -24,19 +24,19 @@
          'time_in_force tif))
 
 (define (order:send order)
-  (post (u:orders)
+  (net:post (u:orders)
           #:headers (cred:auth-api)
-          #:json order)))
+          #:json order))
 
 ;;; Position 
-(define (pos:get ticker)
-  (define u (string->append u:position ticker))
-  (net:get u #:headers  (cred:auth-api)))
+;; (define (pos:get ticker)
+;;   (define u (string->append u:position ticker))
+;;   (net:get u #:headers  (cred:auth-api)))
 
-;; close a position (liquidate)
-(define (pos:delete ticker)
-  (define u (string->append u:position ticker))
-  (net:delete u #:headers  (cred:auth-api)))
+;; ;; close a position (liquidate)
+;; (define (pos:delete ticker)
+;;   (define u (string->append u:position ticker))
+;;   (net:delete u #:headers  (cred:auth-api)))
 
 ;;; Account
 ;;

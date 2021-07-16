@@ -1,8 +1,8 @@
 #lang racket/base
 
 ;;; import dependencies
-(require (prefix-in c: (submod "./credentials.rkt" cred))
-         (prefix-in u: (submod "./credentials.rkt"  urls))
+(require (prefix-in cd: (submod "./credentials.rkt" cred))
+         (prefix-in url: (submod "./credentials.rkt"  urls))
          relation/function
          racket/hash
          racket/set
@@ -16,12 +16,12 @@
 ;;; connect and authenticate
 ;; the connection "iex" will be come live after authenticate
 (define protocol 'rfc6455)
-(define iex:con (ws-connect (string->url (u:iex)) #:protocol protocol))
+(define iex:con (ws-connect (string->url (url:iex)) #:protocol protocol))
 (define curr:con (make-parameter iex:con))
 (ws-recv iex:con)
 
 ;; authenticate to stream (NOT the API)
-(ws-send! iex:con (c:auth-stream))
+(ws-send! iex:con (cd:auth-stream))
 (ws-recv iex:con)
 
 ;;; build request list of tickers
@@ -45,49 +45,50 @@
     (hash-set! heq ticker (list timestamp price))
     heq))
   
-(extract-quote)
+;; (extract-quote)
 
 ;; this is a recursive fn because we need to make frequent request
 ;; to the stream until the ticker of interest is provided
 (define (get-stk-price ticker)
-  (let* ([stock-quote (extract-quote)]
-         [key (car (hash-keys stock-quote))] )
+  (let* ([stk-quote (extract-quote)]
+         [key (car (hash-keys stk-quote))] )
          (cond
-           [(eq? ticker key) stock-quote]
-           [else (get-stock-price ticker)])))
+           [(eq? ticker key) stk-quote]
+           [else (get-stk-price ticker)])))
 
-(get-stk-price 'MSFT)
-(get-stk-price 'AMD)
+(define lived? (ws-conn-closed? iex:con))
+(provide get-stk-price lived?)
 
-                           
-
-;;; todo:  build stock table
-;;;; extract and dump quotes to table
-(define curr:stkdata (make-parameter (make-hasheq)))
-;; initialize stocktable
-;; todo: initialize date/time and price to yesterday close
-(for ([k1 stklist])
-  (let ([k (string->symbol k1)])
-    (hash-set! (curr:stkdata) k (list '("000" 111 )))))
-
-(define (add-price hash key item)
-  (hash-update hash key (curry cons item) '()))
-
-;;;; append stock data to table
-(define (add-stk)   
-  (for ([ticker (curr:stklist)])
-    (let ([price (get-stk-price ticker)])
-      (add-price (curr:stkdata) key price))))
-
-(define (extend-stkdata n)
-  (define ticker (car (curr:stkdata)))
-  ()
-  (if )
-  (thread let loop ()
-    ))
-
+;; (get-stk-price 'MSFT)
+;; (get-stk-price 'AMD)
 
 ;;; close conn
-(ws-conn-closed? iex:con)
-(ws-close! iex:con)
+;; (ws-conn-closed? iex:con)
+;; (ws-close! iex:con)
+
+;;; ** DEPRECATED ** todo:  build stock table
+;;;; extract and dump quotes to table
+;; (define curr:stkdata (make-parameter (make-hasheq)))
+;; ;; initialize stocktable
+;; ;; todo: initialize date/time and price to yesterday close
+;; (for ([k1 stklist])
+;;   (let ([k (string->symbol k1)])
+;;     (hash-set! (curr:stkdata) k (list '("000" 111 )))))
+
+;; (define (add-price hash key item)
+;;   (hash-update hash key (curry cons item) '()))
+
+;; ;;;; append stock data to table
+;; (define (add-stk)   
+;;   (for ([ticker (curr:stklist)])
+;;     (let ([price (get-stk-price ticker)])
+;;       (add-price (curr:stkdata) key price))))
+
+;; (define (extend-stkdata n)
+;;   (define ticker (car (curr:stkdata)))
+;;   ()
+;;   (if )
+;;   (thread let loop ()
+;;     ))
+
 
