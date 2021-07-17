@@ -1,8 +1,7 @@
 #lang racket/base
-
 ;;; import dependencies
-(require (prefix-in cd: (submod "./credentials.rkt" cred))
-         (prefix-in url: (submod "./credentials.rkt"  urls))
+(require (prefix-in cd: (submod "../yaml/credentials.rkt" cred))
+         (prefix-in url: (submod "../yaml/credentials.rkt"  urls))
          relation/function
          racket/hash
          racket/set
@@ -13,30 +12,54 @@
          json
          net/rfc6455)
 
+;;; export
+(provide connect authenticate! sub-quotes)
+
 ;;; connect and authenticate
 ;; the connection "iex" will be come live after authenticate
-(define protocol 'rfc6455)
-(define iex:con (ws-connect (string->url (url:iex)) #:protocol protocol))
-(define curr:con (make-parameter iex:con))
-(ws-recv iex:con)
+(define (connect)
+  (define conn (ws-connect (string->url (url:iex)) #:protocol 'rfc6455))
+  (ws-recv conn)
+  conn)
 
-;; authenticate to stream (NOT the API)
-(ws-send! iex:con (cd:auth-stream))
-(ws-recv iex:con)
+;;; authenticate to stream (NOT the API)
+(define (authenticate! conn)
+  (unless (ws-conn-closed? conn)
+    (ws-send! conn (cd:auth-stream)))
+  (let* ([resp (ws-recv conn)]
+         [js (car (string->jsexpr resp))]
+         [T-msg (hash-ref js 'T)]
+         [msg (hash-ref js 'msg)])
+    (if (eq? msg "authenticated")
+        (values msg (λ () #t))
+        (values msg (λ () #f)))))
 
-;;; build request list of tickers
-(define stklist '("AMD" "MSFT"))
-(define curr:stklist (make-parameter (map string->symbol stklist)))
-(define subscribe:quotes 
-  (jsexpr->string (hasheq 'action "subscribe" 'quotes stklist)))
+
+;; ;;; subscribe to market data stream for stock quotes
+;; (define (sub-quotes conn auth stklist)
+;;   (define subscription 
+;;     (jsexpr->string (hasheq 'action "subscribe" 'quotes stklist)))
+;;   (when (auth)
+;;     (ws-send! conn subscription)
+;;     (ws-recv conn)))
 
 ;;; subscribe to market data stream for stock quotes
-(ws-send! iex:con subscribe:quotes)
-(ws-recv iex:con)
+(define (sub-quotes conn auth stklist)
+  (define subscription 
+    (jsexpr->string (hasheq 'action "subscribe" 'quotes stklist)))
+  (when (auth)
+    (ws-send! conn subscription)))
 
-;;; helper functions: extract quotes from stream
-(define (extract-quote)
-  (let* ([q (ws-recv (curr:con) )] ;; a string is returned
+
+;;; get price (use only after stream is live)
+;; this function assume that there is subscription to stream
+;; load data into sqlite
+(define (get-price conn)
+  (define q (ws-recv (conn))) ;; a string is returned
+  (car (string->jsexpr q)))
+
+(define (get-price-dep conn)
+  (let* ([q (ws-recv (conn) )] ;; a string is returned
          [q/heq (car (string->jsexpr q))]
          [heq (make-hasheq)]
          [ticker (string->symbol (hash-ref q/heq 'S))] 
@@ -44,23 +67,21 @@
          [timestamp (hash-ref q/heq 't)])
     (hash-set! heq ticker (list timestamp price))
     heq))
-  
-;; (extract-quote)
 
-;; this is a recursive fn because we need to make frequent request
-;; to the stream until the ticker of interest is provided
-(define (get-stk-price ticker)
-  (let* ([stk-quote (extract-quote)]
-         [key (car (hash-keys stk-quote))] )
-         (cond
-           [(eq? ticker key) stk-quote]
-           [else (get-stk-price ticker)])))
+;; ;; this is a recursive fn because we need to make frequent request
+;; ;; to the stream until the ticker of interest is provided
+;; (define (get-stk-price ticker)
+;;   (let* ([stk-quote (extract-quote)]
+;;          [key (car (hash-keys stk-quote))] )
+;;          (cond
+;;            [(eq? ticker key) stk-quote]
+;;            [else (get-stk-price ticker)])))
 
-(define lived? (ws-conn-closed? iex:con))
-(provide get-stk-price lived?)
+;; (define lived? (ws-conn-closed? iex:con))
+;; (provide get-stk-price lived?)
 
-;; (get-stk-price 'MSFT)
-;; (get-stk-price 'AMD)
+;; ;; (get-stk-price 'MSFT)
+;; ;; (get-stk-price 'AMD)
 
 ;;; close conn
 ;; (ws-conn-closed? iex:con)
