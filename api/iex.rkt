@@ -13,7 +13,7 @@
          net/rfc6455)
 
 ;;; export
-(provide connect authenticate! sub-quotes)
+(provide connect authenticate! subscribe-quotes)
 
 ;;; connect and authenticate
 ;; the connection "iex" will be come live after authenticate
@@ -30,7 +30,7 @@
          [js (car (string->jsexpr resp))]
          [T-msg (hash-ref js 'T)]
          [msg (hash-ref js 'msg)])
-    (if (eq? msg "authenticated")
+    (if (string=? msg "authenticated")
         (values msg (λ () #t))
         (values msg (λ () #f)))))
 
@@ -44,11 +44,19 @@
 ;;     (ws-recv conn)))
 
 ;;; subscribe to market data stream for stock quotes
-(define (sub-quotes conn auth stklist)
-  (define subscription 
-    (jsexpr->string (hasheq 'action "subscribe" 'quotes stklist)))
-  (when (auth)
-    (ws-send! conn subscription)))
+(define (subscribe-quotes conn au ls)
+  (define subs-json
+    (jsexpr->string (hasheq 'action "subscribe" 'quotes ls)))
+  (when (au)
+    (ws-send! conn subs-json))
+  (let* ([resp (ws-recv conn)]
+         [js (car (string->jsexpr resp))]
+         [T-msg (hash-ref js 'T)])
+    (if (string=? msg "subscription")
+        (values msg (λ () #t))
+        (values msg (λ () #f)))))
+
+
 
 
 ;;; get price (use only after stream is live)
