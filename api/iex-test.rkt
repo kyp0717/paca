@@ -22,10 +22,14 @@
 ;; (define (subscribe-json ls) 
 ;;     (jsexpr->string (hasheq 'action "subscribe" 'quotes ls)))
 ;; (define s (subscribe-json stklist))
-(define-values (sub-resp sub?) (iex:subscribe-quotes! iex auth? stklist))
+(define-values (resp-subscribe subscribe?) (iex:subscribe-quotes iex auth? stklist))
+(check-equal? "subscription" resp-subscribe)
+(check-equal? (subscribe?) #t)
 
-;;; todo: test functions 
-
+;;; test extract data
+;; assume there is already subscription
+(define q (iex:get-price iex))
+(check-match q (list _ _ _))
 
 ;;; close connection
 (ws-close! iex)

@@ -1,2 +1,0 @@
-FROM keinos/sqlite3
-

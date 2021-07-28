@@ -1,4 +1,5 @@
 #lang racket/base
+
 ;;; import dependencies
 (require (prefix-in cd: (submod "../yaml/credentials.rkt" cred))
          (prefix-in url: (submod "../yaml/credentials.rkt"  urls))
@@ -13,7 +14,7 @@
          net/rfc6455)
 
 ;;; export
-(provide connect authenticate! subscribe-quotes)
+(provide connect authenticate! subscribe-quotes get-price)
 
 ;;; connect and authenticate
 ;; the connection "iex" will be come live after authenticate
@@ -51,7 +52,7 @@
     (ws-send! conn subs-json))
   (let* ([resp (ws-recv conn)]
          [js (car (string->jsexpr resp))]
-         [T-msg (hash-ref js 'T)])
+         [msg (hash-ref js 'T)])
     (if (string=? msg "subscription")
         (values msg (λ () #t))
         (values msg (λ () #f)))))
@@ -63,27 +64,24 @@
 ;; this function assume that there is subscription to stream
 ;; load data into sqlite
 (define (get-price conn)
-  (define q (ws-recv (conn))) ;; a string is returned
-  (car (string->jsexpr q)))
+  (define q (ws-recv conn))
+  (define q2 (car (string->jsexpr q)))
+  (define ticker  (hash-ref q2 'S))
+  (define price (hash-ref q2 'ap))
+  (define timestamp (hash-ref q2 't))
+  (list ticker price timestamp))
 
-(define (get-price-dep conn)
-  (let* ([q (ws-recv (conn) )] ;; a string is returned
-         [q/heq (car (string->jsexpr q))]
-         [heq (make-hasheq)]
-         [ticker (string->symbol (hash-ref q/heq 'S))] 
-         [price (hash-ref q/heq 'ap)]
-         [timestamp (hash-ref q/heq 't)])
-    (hash-set! heq ticker (list timestamp price))
-    heq))
 
-;; ;; this is a recursive fn because we need to make frequent request
-;; ;; to the stream until the ticker of interest is provided
-;; (define (get-stk-price ticker)
-;;   (let* ([stk-quote (extract-quote)]
-;;          [key (car (hash-keys stk-quote))] )
-;;          (cond
-;;            [(eq? ticker key) stk-quote]
-;;            [else (get-stk-price ticker)])))
+
+
+;; this is a recursive fn because we need to make frequent request
+;; to the stream until the ticker of interest is provided
+(define (get-price-list ticker)
+  (let* ([stk-quote (extract-quote)]
+         [key (car (hash-keys stk-quote))] )
+         (cond
+           [(eq? ticker key) stk-quote]
+           [else (get-stk-price ticker)])))
 
 ;; (define lived? (ws-conn-closed? iex:con))
 ;; (provide get-stk-price lived?)
