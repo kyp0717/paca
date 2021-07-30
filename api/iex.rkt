@@ -11,10 +11,12 @@
          net/http-easy
          net/url
          json
-         net/rfc6455)
+         net/rfc6455
+         db)
 
 ;;; export
-(provide connect authenticate! subscribe-quotes get-price)
+(provide connect authenticate! subscribe-quotes get-quote get-list-of-quotes
+          get-batch-number sqlite insert-batch! insert-prices!)
 
 ;;; connect and authenticate
 ;; the connection "iex" will be come live after authenticate
@@ -71,51 +73,104 @@
   (define timestamp (hash-ref q2 't))
   (list ticker price timestamp))
 
-
-
+;; this is a recursive fn because we need to make frequent request
+;; to the stream until the ticker of interest is provided
+(define (get-quote iexconn ticker)
+  (let* ([q (ws-recv iexconn)]
+         [q2 (car (string->jsexpr q))]
+         [price (hash-ref q2 'ap)]
+         [timestamp (hash-ref q2 't)]
+         [key  (hash-ref q2 'S)])
+         (cond
+           [(string=? ticker key) (list key price timestamp)]
+           [else (get-quote iexconn ticker)])))
 
 ;; this is a recursive fn because we need to make frequent request
 ;; to the stream until the ticker of interest is provided
-(define (get-price-list ticker)
-  (let* ([stk-quote (extract-quote)]
-         [key (car (hash-keys stk-quote))] )
-         (cond
-           [(eq? ticker key) stk-quote]
-           [else (get-stk-price ticker)])))
+;; (define (get-quote iexconn ticker)
+;;   (let* ([q (ws-recv iexconn)]
+;;          [q2 (car (string->jsexpr q))]
+;;          [key  (hash-ref q2 'S)])
+;;          key))
 
-;; (define lived? (ws-conn-closed? iex:con))
-;; (provide get-stk-price lived?)
+(define (get-list-of-quotes iexconn stklist)
+  (for/list ([tk stklist])
+    (get-quote iexconn tk)))
 
-;; ;; (get-stk-price 'MSFT)
-;; ;; (get-stk-price 'AMD)
+
+
+
+
+
+;;; create database
+(define db-file "/home/phage/projects/sqlite/iex.db")
+(define sqlite (sqlite3-connect #:database db-file #:mode 'create))
+;; (define curr:sqlite (make-parameter sqlite))
+
+;;; Create tables
+(query-exec sqlite "drop table if exists raw_quotes")
+(query-exec sqlite "drop table if exists test_tbl")
+
+(query-exec sqlite
+            "create table raw_quotes
+             (batch integer not null,
+              ticker text not null,
+              iex_timestamp text not null,
+              price text not null) ;")
+
+(query-exec sqlite
+            "create table trend_tbl
+             (insert_dtm integer not null,
+              ticker text not null,
+              slope number not null );")
+
+(query-exec sqlite
+            "create table test_tbl
+             (ticker text not null );")
+
+(query-exec sqlite
+            "create view vw_batch_latest if not exists as
+             select * from raw_quotes
+             where batch in (
+             select top 5 distinct batch
+             from raw_quotes
+             order by batch desc);")
+
+;;; Load data
+;; get batch number
+(define (get-batch-number sqlconn)
+  (define b (query-value sqlconn "select count(*) from raw_quotes"))
+  (if (= b 0)
+      (values 0)
+      (+ b 1)))
+  
+;; insert list of quotes into sqlite 
+(define (insert-prices! sqlconn iexconn stklist)
+  (define batch (get-batch-number sqlconn))
+  (define qlist (iex:get-list-of-quotes iexconn stklist))
+  (for ([i qlist])
+    (let  ([ticker (car i)]
+           [price (car (cdr i))]
+           [ts (car (cdr (cdr i)))])
+      (query-exec sqlconn
+                  "insert into raw_quotes
+                   (batch, interval, ticker, iex_timestamp, price)
+                   values ($1, $2, $3, $4, $5)" 
+                  batch ticker ts price ))))
+
+;; deprecated!!!
+(define (insert-batch! sqlconn iexconn stklist)
+  (define batch (get-batch-number sqlconn))
+  (for ([interval (list 1 2 3 4 5)])
+    (insert-prices! sqlconn iexconn stklist batch interval)
+    (sleep 30))) 
+
+;;; get latest batches of data
+(define (get-batches)
+  (define batches (query-rows "select * from vw_batches_latest")))
+
 
 ;;; close conn
 ;; (ws-conn-closed? iex:con)
 ;; (ws-close! iex:con)
-
-;;; ** DEPRECATED ** todo:  build stock table
-;;;; extract and dump quotes to table
-;; (define curr:stkdata (make-parameter (make-hasheq)))
-;; ;; initialize stocktable
-;; ;; todo: initialize date/time and price to yesterday close
-;; (for ([k1 stklist])
-;;   (let ([k (string->symbol k1)])
-;;     (hash-set! (curr:stkdata) k (list '("000" 111 )))))
-
-;; (define (add-price hash key item)
-;;   (hash-update hash key (curry cons item) '()))
-
-;; ;;;; append stock data to table
-;; (define (add-stk)   
-;;   (for ([ticker (curr:stklist)])
-;;     (let ([price (get-stk-price ticker)])
-;;       (add-price (curr:stkdata) key price))))
-
-;; (define (extend-stkdata n)
-;;   (define ticker (car (curr:stkdata)))
-;;   ()
-;;   (if )
-;;   (thread let loop ()
-;;     ))
-
 

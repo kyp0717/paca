@@ -28,8 +28,47 @@
 
 ;;; test extract data
 ;; assume there is already subscription
-(define q (iex:get-price iex))
-(check-match q (list _ _ _))
+(define q (iex:get-quote iex "AMD"))
+(print q)
+
+(define qlst (iex:get-list-of-quotes iex stklist))
+(print qlst)
+;; (check-match q (list _ _ _))
+
+
+;;; load test data 
+(define (insert-test! sqlconn)
+  (query-exec sqlconn 
+   "insert into test_tbl (ticker) values ('test') "))
+
+;;; check data in test_tbl
+(define (get-count sqlconn)
+  (define b (query-value sqlconn "select count(*) from test_tbl"))
+  b)
+
+
+;;; test sqlite data load
+(check-equal? 0 (get-count sq:sqlite))
+(insert-test! sq:sqlite)
+(check-equal? 1 (get-count sq:sqlite))
+
+;;; test sqlite batch number 
+(check-equal? 0 (sq:get-batch-number sq:sqlite))
+;; (sq:insert-test! sq:sqlite)
+;; (check-equal? 1 (sq:get-batch-number sq:sqlite))
+
+
+;;; check data in raw_quotes
+(define (get-count-raw sqlconn)
+  (define b (query-value sqlconn "select count(*) from raw_quotes"))
+  b)
+
+
+;;; test data load to raw table
+(check-equal? 0 (get-count-raw sq:sqlite))
+(insert-batch! sq:sqlite iex stklist)
+;; (check- (get-count-raw sq:sqlite))
+
 
 ;;; close connection
 (ws-close! iex)
