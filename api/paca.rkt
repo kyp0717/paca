@@ -1,8 +1,8 @@
 #lang racket/base
 
 ;;; import dependencies
-(require (prefix-in cred: (submod "credentials.rkt" cred))
-         (prefix-in u: (submod "credentials.rkt" urls))
+(require (prefix-in cred: (submod "../yaml/credentials.rkt" cred))
+         (prefix-in u: (submod "../yaml/credentials.rkt" urls))
          (prefix-in net: net/http-easy ))
 
 (provide get-clock)

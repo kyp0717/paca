@@ -3,6 +3,8 @@
 ;;; import dependencies
 (require (prefix-in cd: (submod "../yaml/credentials.rkt" cred))
          (prefix-in url: (submod "../yaml/credentials.rkt"  urls))
+         (prefix-in mydb: (submod "./databases.rkt"))
+         (prefix-in ds: data-science)
          relation/function
          racket/hash
          racket/set
@@ -15,8 +17,7 @@
          db)
 
 ;;; export
-(provide connect authenticate! subscribe-quotes get-quote get-list-of-quotes
-          get-batch-number sqlite insert-batch! insert-prices!)
+(provide connect authenticate! subscribe-quotes insert-mkt-data! close!)
 
 ;;; connect and authenticate
 ;; the connection "iex" will be come live after authenticate
@@ -102,75 +103,45 @@
 
 
 
-;;; create database
-(define db-file "/home/phage/projects/sqlite/iex.db")
-(define sqlite (sqlite3-connect #:database db-file #:mode 'create))
-;; (define curr:sqlite (make-parameter sqlite))
-
-;;; Create tables
-(query-exec sqlite "drop table if exists raw_quotes")
-(query-exec sqlite "drop table if exists test_tbl")
-
-(query-exec sqlite
-            "create table raw_quotes
-             (batch integer not null,
-              ticker text not null,
-              iex_timestamp text not null,
-              price text not null) ;")
-
-(query-exec sqlite
-            "create table trend_tbl
-             (insert_dtm integer not null,
-              ticker text not null,
-              slope number not null );")
-
-(query-exec sqlite
-            "create table test_tbl
-             (ticker text not null );")
-
-(query-exec sqlite
-            "create view vw_batch_latest if not exists as
-             select * from raw_quotes
-             where batch in (
-             select top 5 distinct batch
-             from raw_quotes
-             order by batch desc);")
-
-;;; Load data
+;;; ETL: iex to db data load
 ;; get batch number
-(define (get-batch-number sqlconn)
-  (define b (query-value sqlconn "select count(*) from raw_quotes"))
-  (if (= b 0)
-      (values 0)
-      (+ b 1)))
+;; (define (get-batch-number dbconn)
+;;   (define b (query-value dbconn "select count(*) from stg_mkt_data"))
+;;   (if (= b 0)
+;;       (values 0)
+;;       (+ b 1)))
   
 ;; insert list of quotes into sqlite 
-(define (insert-prices! sqlconn iexconn stklist)
-  (define batch (get-batch-number sqlconn))
-  (define qlist (iex:get-list-of-quotes iexconn stklist))
+(define (insert-mkt-data! dbconn iexconn stklist)
+  (define batch (current-seconds))
+  (define qlist (get-list-of-quotes iexconn stklist))
   (for ([i qlist])
     (let  ([ticker (car i)]
            [price (car (cdr i))]
            [ts (car (cdr (cdr i)))])
-      (query-exec sqlconn
-                  "insert into raw_quotes
-                   (batch, interval, ticker, iex_timestamp, price)
+      (query-exec dbconn
+                  "insert into  stg_mkt_data
+                   (batch, ticker, iex_timestamp, price)
                    values ($1, $2, $3, $4, $5)" 
                   batch ticker ts price ))))
 
 ;; deprecated!!!
-(define (insert-batch! sqlconn iexconn stklist)
-  (define batch (get-batch-number sqlconn))
-  (for ([interval (list 1 2 3 4 5)])
-    (insert-prices! sqlconn iexconn stklist batch interval)
-    (sleep 30))) 
+;; (define (insert-batch! dbconn iexconn stklist)
+;;   (for ([interval (list 1 2 3 4 5)])
+;;     (insert-prices! sqlconn iexconn stklist batch interval)
+;;     (sleep 30))) 
 
-;;; get latest batches of data
-(define (get-batches)
-  (define batches (query-rows "select * from vw_batches_latest")))
+;;; get latest batches of data from db
+;; the view should return the latest batch
+(define (get-mkt-data dbconn)
+  (define data (query-rows dbconn "select * from vw_mkt_data_latest"))
+  (if (< (length data) 5)
+      (values #f '())
+      (values #t data)))
 
 
 ;;; close conn
 ;; (ws-conn-closed? iex:con)
 ;; (ws-close! iex:con)
-
+;; (disconnect dbconn)
+(define (close! iexconn) (ws-close! iexconn))
