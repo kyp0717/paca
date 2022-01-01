@@ -1,9 +1,12 @@
 FROM python:3.8-slim-buster
 RUN pip install alpaca-trade-api
 
-ENV APCA_API_KEY_ID
-    APCA_API_SECRET_KEY
-    APCA_API_BASE_URL
+ENV APCA_API_KEY_ID=xx
+# ENV APCA_API_SECRET_KEY=xx
+# ENV APCA_API_BASE_URL=xx
 
+COPY ./scripts/gettime.py /opt/gettime.py
+
+RUN python gettime.py
 
 
