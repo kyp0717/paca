@@ -1,33 +1,33 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: redis-deploy
+  name: postgres-deploy
 spec:
   replicas: 1  
   selector:
     matchLabels:
-      component: redis 
+      component: postgres
   template:
     metadata:
       labels:
-        component: redis 
+        component: postgres
     spec:
       containers:
-        - name: redis 
-          image: redis
+        - name: postgres
+          image: postgres
           ports:
-            - containerPort: 6379
+            - containerPort: 5432
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: redis-clusterip-svc
+  name: postgres-clusterip-svc
 spec:
   type: ClusterIP 
   selector: 
-    component: redis
+    component: postgres
   ports:
-    - port: 6379
-      targetPort: 6379
+    - port: 5432
+      targetPort: 5432
 

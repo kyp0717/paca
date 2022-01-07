@@ -1,0 +1,9 @@
+FROM python:3.8-slim-buster
+RUN pip install alpaca-trade-api redis
+
+# ENV APCA_API_KEY_ID=xx
+# ENV APCA_API_SECRET_KEY=xx
+# ENV APCA_API_BASE_URL=xx
+
+
+
