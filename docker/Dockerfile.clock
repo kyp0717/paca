@@ -1,0 +1,12 @@
+FROM python:3.8-slim-buster
+RUN pip install alpaca-trade-api redis
+
+# Don't need to pass env variables into images
+# Container will pull in env variables from configmaps and secrets
+# See the folder cdk8s that will generate the yaml for configmaps and secrets
+# ENV APCA_API_KEY_ID=xx
+# ENV APCA_API_SECRET_KEY=xx
+# ENV APCA_API_BASE_URL=xx
+
+
+

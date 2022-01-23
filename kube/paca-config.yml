@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: paca-config
+  namespace: default
+data:
+  # Configuration values can be set as key-value properties
+  APCA_API_BASE_URL: https://paper-api.alpaca.markets
+  APCA_API_KEY_ID: PK5ILMM829PEMAKRAYIU
+  APCA_API_SECRET_KEY: 6qcD07OW8tSQViYW9PC1cxWbV9JToXYO0sOp0KDK
+  REDIS_SERVER: redis-server
